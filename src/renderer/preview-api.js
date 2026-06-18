@@ -36,6 +36,18 @@ if (!window.schoolPortal) {
     }],
     selectedClassId: '1-1',
     subjectCatalog: ['국어', '수학', '영어', '통합', '체육', '음악', '미술', '창체', '동아리', '안전'],
+    subjectIcons: {
+      '국어': 'book-open',
+      '수학': 'calculator',
+      '영어': 'languages',
+      '통합': 'shapes',
+      '체육': 'dumbbell',
+      '음악': 'music',
+      '미술': 'palette',
+      '창체': 'sparkles',
+      '동아리': 'users',
+      '안전': 'shield'
+    },
     notices: [
       { id: 'notice-1', title: '학교 행사 안내', body: '이번 주 금요일에 학년별 체험 활동이 있습니다.', urgent: false, createdAt: new Date().toISOString() }
     ],

@@ -31,7 +31,7 @@
 
         <section class="section services-section">
           <div class="section-title">
-            <div><p>빠른 실행</p><h1>학교 서비스</h1></div>
+            <div class="title-with-icon"><span class="menu-icon apps-icon">⌘</span><div><p>빠른 실행</p><h1>학교 서비스</h1></div></div>
             <span id="serviceCount"></span>
           </div>
           <div id="shortcutGrid" class="shortcut-grid"></div>
@@ -40,7 +40,7 @@
         <section class="info-grid">
           <article class="panel timetable-panel">
             <div class="panel-title">
-              <div><p>반별 수업</p><h2>주간 시간표</h2></div>
+              <div class="title-with-icon"><span class="menu-icon timetable-icon">▦</span><div><p>반별 수업</p><h2>주간 시간표</h2></div></div>
               <select id="classSelect" aria-label="반 선택"></select>
             </div>
             <div id="classSummary" class="class-summary"></div>
@@ -50,7 +50,7 @@
 
           <article class="panel calendar-panel">
             <div class="panel-title">
-              <div><p>학교 공통</p><h2 id="calendarTitle">학사일정</h2></div>
+              <div class="title-with-icon"><span class="menu-icon calendar-icon">□</span><div><p>학교 공통</p><h2 id="calendarTitle">학사일정</h2></div></div>
               <div class="calendar-controls">
                 <button id="prevMonthBtn" class="icon-button small" aria-label="이전 달">‹</button>
                 <button id="nextMonthBtn" class="icon-button small" aria-label="다음 달">›</button>
@@ -64,14 +64,14 @@
         <section class="bottom-grid">
           <article class="panel meal-card">
             <div class="panel-title">
-              <div><p>NEIS 학교 공통</p><h2>오늘의 급식</h2></div>
+              <div class="title-with-icon"><span class="menu-icon meal-icon">♨</span><div><p>NEIS 학교 공통</p><h2>오늘의 급식</h2></div></div>
               <span id="mealDate"></span>
             </div>
             <div id="mealPanel" class="meal-panel"></div>
           </article>
 
           <article class="panel notice-panel">
-            <div class="panel-title"><div><p>학교 소식</p><h2>공지사항</h2></div></div>
+            <div class="panel-title"><div class="title-with-icon"><span class="menu-icon notice-icon">●</span><div><p>학교 소식</p><h2>공지사항</h2></div></div></div>
             <div id="noticeList" class="notice-list"></div>
           </article>
         </section>
@@ -99,13 +99,13 @@
           <button id="adminCloseBtn" class="icon-button" aria-label="닫기">×</button>
         </div>
         <nav class="admin-tabs">
-          <button class="active" data-tab="school">학교 설정</button>
-          <button data-tab="shortcuts">바로가기</button>
-          <button data-tab="classes">반·시간표</button>
-          <button data-tab="calendar">학사일정</button>
-          <button data-tab="broadcast">공지·변경 알림</button>
-          <button data-tab="devices">PC 관리</button>
-          <button data-tab="updates">업데이트</button>
+          <button class="active" data-tab="school"><span>⚙</span>학교 설정</button>
+          <button data-tab="shortcuts"><span>⌘</span>바로가기</button>
+          <button data-tab="classes"><span>▦</span>반·시간표</button>
+          <button data-tab="calendar"><span>□</span>학사일정</button>
+          <button data-tab="broadcast"><span>◉</span>공지·변경 알림</button>
+          <button data-tab="devices"><span>▣</span>PC 관리</button>
+          <button data-tab="updates"><span>↻</span>업데이트</button>
         </nav>
         <div id="adminContent" class="admin-content"></div>
       </div>

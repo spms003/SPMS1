@@ -9,9 +9,9 @@ const os = require('os');
 const { spawn } = require('child_process');
 const { autoUpdater } = require('electron-updater');
 
-const APP_CONFIG_VERSION = 10;
+const APP_CONFIG_VERSION = 11;
 const SYNC_INTERVAL_MS = 5000;
-const SHARED_KEYS = ['shortcuts', 'categories', 'classes', 'subjectCatalog', 'notices', 'schedules', 'timetableChanges'];
+const SHARED_KEYS = ['shortcuts', 'categories', 'classes', 'subjectCatalog', 'subjectIcons', 'notices', 'schedules', 'timetableChanges'];
 const LAN_GROUP = '239.255.42.99';
 const LAN_PORT = 41234;
 const LAN_PROTOCOL = 'school-portal-lan-v1';
@@ -113,6 +113,20 @@ function createDefaults() {
     shortcuts: defaultShortcuts(),
     classes: defaultClasses(),
     subjectCatalog: ['국어', '수학', '영어', '통합', '과학', '사회', '체육', '음악', '미술', '창체', '동아리', '안전'],
+    subjectIcons: {
+      '국어': 'book-open',
+      '수학': 'calculator',
+      '영어': 'languages',
+      '통합': 'shapes',
+      '과학': 'flask',
+      '사회': 'globe',
+      '체육': 'dumbbell',
+      '음악': 'music',
+      '미술': 'palette',
+      '창체': 'sparkles',
+      '동아리': 'users',
+      '안전': 'shield'
+    },
     selectedClassId: '1-1',
     notices: [{
       id: crypto.randomUUID(),
@@ -164,6 +178,7 @@ function createStore() {
       }));
       const timetableSubjects = data.classes.flatMap((item) => item.timetable || []).flat().filter(Boolean);
       data.subjectCatalog = [...new Set([...(saved.subjectCatalog || defaults.subjectCatalog), ...timetableSubjects])];
+      data.subjectIcons = { ...defaults.subjectIcons, ...(saved.subjectIcons || {}) };
     } catch {
       data = defaults;
     }
@@ -296,7 +311,7 @@ function readSharedData() {
     const hasNewAlert = incomingRevision > lastSharedRevision;
 
     for (const key of SHARED_KEYS) {
-      if (Array.isArray(shared[key])) store.set(key, shared[key]);
+      if (shared[key] !== undefined) store.set(key, shared[key]);
     }
     store.set('notificationRevision', incomingRevision);
     lastSharedRevision = incomingRevision;
@@ -494,7 +509,7 @@ function sendLanPacket(type, payload) {
 function receiveLanAnnouncement(payload) {
   if (!payload?.alert || !payload?.patch) return;
   for (const key of SHARED_KEYS) {
-    if (Array.isArray(payload.patch[key])) store.set(key, payload.patch[key]);
+    if (payload.patch[key] !== undefined) store.set(key, payload.patch[key]);
   }
   if (mainWindow && !mainWindow.isDestroyed()) {
     if (mainWindow.isMinimized()) mainWindow.restore();

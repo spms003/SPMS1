@@ -2,6 +2,24 @@ const api = window.schoolPortal;
 const $ = (selector) => document.querySelector(selector);
 const weekdays = ['월', '화', '수', '목', '금'];
 const calendarWeekdays = ['일', '월', '화', '수', '목', '금', '토'];
+const subjectIconPresets = [
+  { id: 'book-open', glyph: '▤', name: '책' },
+  { id: 'calculator', glyph: '＋', name: '계산' },
+  { id: 'languages', glyph: 'A', name: '언어' },
+  { id: 'shapes', glyph: '◇', name: '통합' },
+  { id: 'flask', glyph: '⚗', name: '과학' },
+  { id: 'globe', glyph: '◎', name: '세계' },
+  { id: 'dumbbell', glyph: '◆', name: '체육' },
+  { id: 'music', glyph: '♪', name: '음악' },
+  { id: 'palette', glyph: '◒', name: '미술' },
+  { id: 'sparkles', glyph: '✦', name: '활동' },
+  { id: 'users', glyph: '♟', name: '모임' },
+  { id: 'shield', glyph: '⬟', name: '안전' },
+  { id: 'computer', glyph: '▣', name: '정보' },
+  { id: 'history', glyph: '◷', name: '역사' },
+  { id: 'leaf', glyph: '♧', name: '자연' },
+  { id: 'star', glyph: '★', name: '기타' }
+];
 
 let state;
 let adminTab = 'school';
@@ -31,6 +49,16 @@ function uid(prefix) {
 
 function selectedClass() {
   return state.classes.find((item) => item.id === state.selectedClassId) || state.classes[0];
+}
+
+function subjectIcon(subject) {
+  const iconId = state.subjectIcons?.[subject] || 'star';
+  return subjectIconPresets.find((item) => item.id === iconId) || subjectIconPresets.at(-1);
+}
+
+function subjectIconMarkup(subject) {
+  const icon = subjectIcon(subject);
+  return `<span class="subject-icon subject-icon-${escapeHtml(icon.id)}" title="${escapeHtml(icon.name)}">${escapeHtml(icon.glyph)}</span>`;
 }
 
 function iconMarkup(shortcut) {
@@ -97,7 +125,8 @@ function renderClass() {
   for (let period = 0; period < maxPeriods; period += 1) {
     cells.push(`<div class="period">${period + 1}</div>`);
     weekdays.forEach((_day, dayIndex) => {
-      cells.push(`<div class="subject">${escapeHtml(current.timetable[dayIndex]?.[period] || '-')}</div>`);
+      const subject = current.timetable[dayIndex]?.[period] || '';
+      cells.push(`<div class="subject">${subject ? `${subjectIconMarkup(subject)}<span>${escapeHtml(subject)}</span>` : '<span>-</span>'}</div>`);
     });
   }
   $('#weeklyTimetable').style.setProperty('--rows', maxPeriods);
@@ -414,8 +443,15 @@ function shortcutEditor() {
 
 function subjectOptions(selected = '') {
   return ['<option value="">수업 없음</option>', ...state.subjectCatalog.map((subject) =>
-    `<option value="${escapeHtml(subject)}" ${subject === selected ? 'selected' : ''}>${escapeHtml(subject)}</option>`
+    `<option value="${escapeHtml(subject)}" ${subject === selected ? 'selected' : ''}>${escapeHtml(subjectIcon(subject).glyph)} ${escapeHtml(subject)}</option>`
   )].join('');
+}
+
+function subjectIconOptions(subject) {
+  const selected = state.subjectIcons?.[subject] || 'star';
+  return subjectIconPresets.map((icon) =>
+    `<option value="${icon.id}" ${icon.id === selected ? 'selected' : ''}>${escapeHtml(icon.glyph)} ${escapeHtml(icon.name)}</option>`
+  ).join('');
 }
 
 function timetableSelectGrid(item) {
@@ -436,7 +472,14 @@ function classEditor() {
   return `
     <div class="item-editor subject-manager">
       <h3>시간표 과목 목록</h3>
-      <div class="subject-chips">${state.subjectCatalog.map((subject) => `<button class="subject-chip" data-delete-subject="${escapeHtml(subject)}">${escapeHtml(subject)} ×</button>`).join('')}</div>
+      <div class="subject-icon-list">${state.subjectCatalog.map((subject) => `
+        <div class="subject-icon-item">
+          ${subjectIconMarkup(subject)}
+          <strong>${escapeHtml(subject)}</strong>
+          <select data-subject-icon="${escapeHtml(subject)}" aria-label="${escapeHtml(subject)} 아이콘">${subjectIconOptions(subject)}</select>
+          <button class="subject-delete" data-delete-subject="${escapeHtml(subject)}" aria-label="${escapeHtml(subject)} 삭제">×</button>
+        </div>
+      `).join('')}</div>
       <div class="inline-add"><input id="newSubjectName" placeholder="새 과목 이름" /><button class="secondary-button" id="addSubjectBtn">과목 추가</button></div>
     </div>
     <div class="actions"><button class="primary-button" id="addClassBtn">반 추가</button></div>
@@ -575,10 +618,20 @@ $('#adminContent').addEventListener('click', async (event) => {
   }
   if (target.id === 'addSubjectBtn') {
     const subject = $('#newSubjectName').value.trim();
-    if (subject && !state.subjectCatalog.includes(subject)) await saveConfig({ subjectCatalog: [...state.subjectCatalog, subject] });
+    if (subject && !state.subjectCatalog.includes(subject)) {
+      await saveConfig({
+        subjectCatalog: [...state.subjectCatalog, subject],
+        subjectIcons: { ...(state.subjectIcons || {}), [subject]: 'star' }
+      });
+    }
   }
   if (target.dataset.deleteSubject) {
-    await saveConfig({ subjectCatalog: state.subjectCatalog.filter((subject) => subject !== target.dataset.deleteSubject) });
+    const subjectIcons = { ...(state.subjectIcons || {}) };
+    delete subjectIcons[target.dataset.deleteSubject];
+    await saveConfig({
+      subjectCatalog: state.subjectCatalog.filter((subject) => subject !== target.dataset.deleteSubject),
+      subjectIcons
+    });
   }
   if (target.dataset.saveClass) await saveClass(target.dataset.saveClass);
   if (target.dataset.deleteClass) {
@@ -605,6 +658,15 @@ $('#adminContent').addEventListener('click', async (event) => {
 });
 
 $('#adminContent').addEventListener('change', (event) => {
+  if (event.target.dataset.subjectIcon) {
+    saveConfig({
+      subjectIcons: {
+        ...(state.subjectIcons || {}),
+        [event.target.dataset.subjectIcon]: event.target.value
+      }
+    });
+    return;
+  }
   if (event.target.dataset.field !== 'periods') return;
   const editor = event.target.closest('[data-class-editor]');
   const showSeventh = event.target.value === '7';
