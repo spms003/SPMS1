@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>School Portal</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="desktop">
+      <header class="mac-toolbar">
+        <div class="traffic-lights" aria-hidden="true"><i></i><i></i><i></i></div>
+        <button id="brandButton" class="brand" aria-label="학교 로고">
+          <span class="logo" id="schoolLogo">SP</span>
+          <span class="brand-copy">
+            <strong id="schoolName">School Portal</strong>
+            <small id="todayText"></small>
+          </span>
+        </button>
+        <div class="top-actions">
+          <label class="search">
+            <span aria-hidden="true">⌕</span>
+            <input id="searchInput" type="search" placeholder="서비스 검색" />
+          </label>
+          <button id="fullScreenBtn" class="icon-button" title="전체 화면" aria-label="전체 화면">⛶</button>
+        </div>
+      </header>
+
+      <main class="app">
+        <section id="urgentPanel" class="urgent hidden"></section>
+
+        <section class="section services-section">
+          <div class="section-title">
+            <div><p>빠른 실행</p><h1>학교 서비스</h1></div>
+            <span id="serviceCount"></span>
+          </div>
+          <div id="shortcutGrid" class="shortcut-grid"></div>
+        </section>
+
+        <section class="info-grid">
+          <article class="panel timetable-panel">
+            <div class="panel-title">
+              <div><p>반별 수업</p><h2>주간 시간표</h2></div>
+              <select id="classSelect" aria-label="반 선택"></select>
+            </div>
+            <div id="classSummary" class="class-summary"></div>
+            <div id="weeklyTimetable" class="weekly-timetable"></div>
+            <div id="changeList" class="change-list"></div>
+          </article>
+
+          <article class="panel calendar-panel">
+            <div class="panel-title">
+              <div><p>학교 공통</p><h2 id="calendarTitle">학사일정</h2></div>
+              <div class="calendar-controls">
+                <button id="prevMonthBtn" class="icon-button small" aria-label="이전 달">‹</button>
+                <button id="nextMonthBtn" class="icon-button small" aria-label="다음 달">›</button>
+              </div>
+            </div>
+            <div id="calendar" class="calendar"></div>
+            <div id="calendarEvents" class="calendar-events"></div>
+          </article>
+        </section>
+
+        <section class="bottom-grid">
+          <article class="panel meal-card">
+            <div class="panel-title">
+              <div><p>NEIS 학교 공통</p><h2>오늘의 급식</h2></div>
+              <span id="mealDate"></span>
+            </div>
+            <div id="mealPanel" class="meal-panel"></div>
+          </article>
+
+          <article class="panel notice-panel">
+            <div class="panel-title"><div><p>학교 소식</p><h2>공지사항</h2></div></div>
+            <div id="noticeList" class="notice-list"></div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="adminLoginDialog" class="modal login-modal">
+      <form method="dialog" class="modal-card" id="adminLoginForm">
+        <div class="dialog-traffic" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="modal-header">
+          <div><p>School Portal</p><h2>관리자 로그인</h2></div>
+          <button value="cancel" class="icon-button" aria-label="닫기">×</button>
+        </div>
+        <label>관리자 비밀번호<input id="adminPassword" type="password" autocomplete="current-password" placeholder="비밀번호 입력" /></label>
+        <p id="loginError" class="form-error"></p>
+        <button class="primary-button" value="default">관리자 페이지 열기</button>
+      </form>
+    </dialog>
+
+    <dialog id="adminDialog" class="modal wide">
+      <div class="modal-card admin-card">
+        <div class="dialog-traffic" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="modal-header">
+          <div><p>School Portal</p><h2>관리자 페이지</h2></div>
+          <button id="adminCloseBtn" class="icon-button" aria-label="닫기">×</button>
+        </div>
+        <nav class="admin-tabs">
+          <button class="active" data-tab="school">학교 설정</button>
+          <button data-tab="shortcuts">바로가기</button>
+          <button data-tab="classes">반·시간표</button>
+          <button data-tab="calendar">학사일정</button>
+          <button data-tab="broadcast">공지·변경 알림</button>
+          <button data-tab="devices">PC 관리</button>
+          <button data-tab="updates">업데이트</button>
+        </nav>
+        <div id="adminContent" class="admin-content"></div>
+      </div>
+    </dialog>
+
+    <dialog id="alertDialog" class="modal alert-modal">
+      <div class="modal-card alert-card">
+        <div class="alert-symbol">!</div>
+        <p id="alertKind">학교 알림</p>
+        <h2 id="alertTitle"></h2>
+        <div id="alertBody"></div>
+        <button id="alertCloseBtn" class="primary-button">확인</button>
+      </div>
+    </dialog>
+
+    <dialog id="updateDialog" class="modal update-modal">
+      <div class="modal-card update-card">
+        <div class="update-symbol">↓</div>
+        <p>School Portal 업데이트</p>
+        <h2 id="updateTitle">새 버전이 있습니다</h2>
+        <div id="updateNotes"></div>
+        <div id="updateProgress" class="update-progress hidden">
+          <div><span id="updateProgressBar"></span></div>
+          <small id="updateProgressText">0%</small>
+        </div>
+        <div class="update-actions">
+          <button id="updateLaterBtn" class="secondary-button">나중에</button>
+          <button id="updateDownloadBtn" class="primary-button">앱에서 업데이트</button>
+          <button id="updateInstallBtn" class="primary-button hidden">지금 설치</button>
+        </div>
+      </div>
+    </dialog>
+
+    <script src="./preview-api.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

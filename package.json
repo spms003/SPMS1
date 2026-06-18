@@ -1,0 +1,69 @@
+{
+  "name": "school-portal",
+  "version": "1.7.0",
+  "description": "Windows school-wide portal launcher for students and staff.",
+  "main": "src/main.js",
+  "author": "School Portal",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/spms003/SPMS1.git"
+  },
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "release": "electron-builder --win --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "kr.school.portal",
+    "productName": "School Portal",
+    "directories": {
+      "output": "outputs/dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "spms003",
+        "repo": "SPMS1",
+        "releaseType": "release"
+      }
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "verifyUpdateCodeSignature": false,
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "School-Portal-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "School Portal",
+      "installerSidebar": "assets/installer-sidebar.bmp",
+      "uninstallerSidebar": "assets/installer-sidebar.bmp",
+      "displayLanguageSelector": false,
+      "installerLanguages": [
+        "ko_KR"
+      ],
+      "include": "build/installer.nsh"
+    }
+  }
+}
