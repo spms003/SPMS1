@@ -9,7 +9,7 @@ const os = require('os');
 const { spawn } = require('child_process');
 const { autoUpdater } = require('electron-updater');
 
-const APP_CONFIG_VERSION = 9;
+const APP_CONFIG_VERSION = 10;
 const SYNC_INTERVAL_MS = 5000;
 const SHARED_KEYS = ['shortcuts', 'categories', 'classes', 'subjectCatalog', 'notices', 'schedules', 'timetableChanges'];
 const LAN_GROUP = '239.255.42.99';
@@ -218,6 +218,18 @@ function createWindow() {
   if (process.env.SCHOOL_PORTAL_CAPTURE) {
     mainWindow.webContents.once('did-finish-load', () => {
       setTimeout(async () => {
+        if (process.env.SCHOOL_PORTAL_CAPTURE_BROWSER === 'true') {
+          const browserWindow = createShortcutWindow({
+            title: '인터넷 수업 자료',
+            target: 'data:text/html;charset=utf-8,%3Cstyle%3Ebody%7Bfont-family%3Asans-serif%3Bdisplay%3Agrid%3Bplace-items%3Acenter%3Bheight%3A100vh%3Bmargin%3A0%3Bbackground%3A%23f7f7f9%7Dh1%7Bfont-size%3A38px%7Dp%7Bcolor%3A%236e6e73%7D%3C%2Fstyle%3E%3Cmain%3E%3Ch1%3E학교 인터넷 서비스%3C%2Fh1%3E%3Cp%3E웹페이지 영역 미리보기%3C%2Fp%3E%3C%2Fmain%3E'
+          });
+          await new Promise((resolve) => browserWindow.webContents.once('did-finish-load', resolve));
+          await new Promise((resolve) => setTimeout(resolve, 450));
+          const browserImage = await browserWindow.webContents.capturePage();
+          fs.writeFileSync(process.env.SCHOOL_PORTAL_CAPTURE, browserImage.toPNG());
+          app.quit();
+          return;
+        }
         if (process.env.SCHOOL_PORTAL_CAPTURE_ADMIN === 'classes') {
           await mainWindow.webContents.executeJavaScript(`
             adminTab = 'classes';
@@ -624,25 +636,60 @@ ipcMain.handle('shortcut:launch', async (_event, shortcut) => {
     return { ok: result === '', message: result };
   }
 
+  createShortcutWindow(shortcut);
+  return { ok: true };
+});
+
+function restoreMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.setFullScreen(true);
+  mainWindow.focus();
+}
+
+function createShortcutWindow(shortcut) {
   const child = new BrowserWindow({
     width: 1280,
     height: 840,
     title: `${shortcut.title} - School Portal`,
     parent: mainWindow,
     fullscreen: true,
+    frame: false,
     backgroundColor: '#ffffff',
-    webPreferences: { contextIsolation: true, nodeIntegration: false }
+    webPreferences: {
+      preload: path.join(__dirname, 'browser-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      webviewTag: true
+    }
   });
   child.setMenuBarVisibility(false);
-  child.on('closed', () => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.show();
-    mainWindow.setFullScreen(true);
-    mainWindow.focus();
+  child.on('closed', restoreMainWindow);
+  child.loadFile(path.join(__dirname, 'renderer', 'browser.html'), {
+    query: { title: shortcut.title, url: shortcut.target }
   });
-  child.loadURL(shortcut.target);
-  return { ok: true };
+  return child;
+}
+
+ipcMain.handle('browser:minimize', (event) => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  if (window && window !== mainWindow) window.minimize();
+  restoreMainWindow();
+  return true;
+});
+
+ipcMain.handle('browser:close', (event) => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  if (window && window !== mainWindow) window.close();
+  return true;
+});
+
+ipcMain.handle('browser:portal', (event) => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  if (window && window !== mainWindow) window.close();
+  restoreMainWindow();
+  return true;
 });
 
 ipcMain.handle('window:toggleFullScreen', () => {

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>School Portal Browser</title>
+    <link rel="stylesheet" href="./browser.css" />
+  </head>
+  <body>
+    <header class="browser-toolbar">
+      <div class="traffic-controls">
+        <button id="closeBtn" class="traffic close" title="닫기" aria-label="닫기"></button>
+        <button id="minimizeBtn" class="traffic minimize" title="최소화" aria-label="최소화"></button>
+        <button id="portalBtn" class="traffic portal" title="School Portal로 돌아가기" aria-label="School Portal로 돌아가기"></button>
+      </div>
+      <div class="navigation">
+        <button id="backBtn" class="nav-button" title="뒤로" aria-label="뒤로">‹</button>
+        <button id="forwardBtn" class="nav-button" title="앞으로" aria-label="앞으로">›</button>
+        <button id="reloadBtn" class="nav-button" title="새로고침" aria-label="새로고침">↻</button>
+      </div>
+      <div class="location">
+        <span class="lock">●</span>
+        <strong id="pageTitle">학교 서비스</strong>
+        <span id="pageUrl"></span>
+      </div>
+      <button id="homeBtn" class="portal-button">School Portal</button>
+    </header>
+    <div id="loadingBar" class="loading-bar"></div>
+    <webview id="serviceView" partition="persist:school-portal-web"></webview>
+    <script src="./browser.js"></script>
+  </body>
+</html>
