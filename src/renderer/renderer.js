@@ -3,22 +3,22 @@ const $ = (selector) => document.querySelector(selector);
 const weekdays = ['월', '화', '수', '목', '금'];
 const calendarWeekdays = ['일', '월', '화', '수', '목', '금', '토'];
 const subjectIconPresets = [
-  { id: 'book-open', glyph: '▤', name: '책' },
-  { id: 'calculator', glyph: '＋', name: '계산' },
-  { id: 'languages', glyph: 'A', name: '언어' },
-  { id: 'shapes', glyph: '◇', name: '통합' },
-  { id: 'flask', glyph: '⚗', name: '과학' },
-  { id: 'globe', glyph: '◎', name: '세계' },
-  { id: 'dumbbell', glyph: '◆', name: '체육' },
-  { id: 'music', glyph: '♪', name: '음악' },
-  { id: 'palette', glyph: '◒', name: '미술' },
-  { id: 'sparkles', glyph: '✦', name: '활동' },
-  { id: 'users', glyph: '♟', name: '모임' },
-  { id: 'shield', glyph: '⬟', name: '안전' },
-  { id: 'computer', glyph: '▣', name: '정보' },
-  { id: 'history', glyph: '◷', name: '역사' },
-  { id: 'leaf', glyph: '♧', name: '자연' },
-  { id: 'star', glyph: '★', name: '기타' }
+  { id: 'book-open', glyph: '책', name: '책' },
+  { id: 'calculator', glyph: '123', name: '계산' },
+  { id: 'languages', glyph: 'Aa', name: '언어' },
+  { id: 'shapes', glyph: '도형', name: '통합' },
+  { id: 'flask', glyph: '실험', name: '과학' },
+  { id: 'globe', glyph: '지구', name: '세계' },
+  { id: 'dumbbell', glyph: '운동', name: '체육' },
+  { id: 'music', glyph: '음표', name: '음악' },
+  { id: 'palette', glyph: '색', name: '미술' },
+  { id: 'sparkles', glyph: '활동', name: '활동' },
+  { id: 'users', glyph: '모임', name: '모임' },
+  { id: 'shield', glyph: '안전', name: '안전' },
+  { id: 'computer', glyph: 'PC', name: '정보' },
+  { id: 'history', glyph: '과거', name: '역사' },
+  { id: 'leaf', glyph: '잎', name: '자연' },
+  { id: 'star', glyph: '별', name: '기타' }
 ];
 
 let state;
