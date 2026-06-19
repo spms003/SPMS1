@@ -9,9 +9,9 @@ const os = require('os');
 const { spawn, execFile } = require('child_process');
 const { autoUpdater } = require('electron-updater');
 
-const APP_CONFIG_VERSION = 12;
+const APP_CONFIG_VERSION = 13;
 const SYNC_INTERVAL_MS = 5000;
-const SHARED_KEYS = ['shortcuts', 'categories', 'classes', 'subjectCatalog', 'subjectIcons', 'notices', 'schedules', 'timetableChanges'];
+const SHARED_KEYS = ['shortcuts', 'categories', 'classes', 'subjectCatalog', 'subjectIcons', 'appearance', 'notices', 'schedules', 'timetableChanges'];
 const LAN_GROUP = '239.255.42.99';
 const LAN_PORT = 41234;
 const LAN_PROTOCOL = 'school-portal-lan-v1';
@@ -164,6 +164,7 @@ function createDefaults() {
     },
     admin: { passwordHash: hashPassword('admin1234') },
     device: { id: crypto.randomUUID() },
+    appearance: { theme: 'mac-light' },
     categories: [{ id: 'service', name: '학교 서비스' }],
     shortcuts: defaultShortcuts(),
     classes: defaultClasses(),
@@ -328,6 +329,13 @@ function createWindow() {
               createdAt: new Date().toISOString(),
               kind: 'timetable'
             }, ...state.timetableChanges];
+            render();
+          `);
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        }
+        if (process.env.SCHOOL_PORTAL_CAPTURE_THEME) {
+          await mainWindow.webContents.executeJavaScript(`
+            state.appearance = { ...(state.appearance || {}), theme: ${JSON.stringify(process.env.SCHOOL_PORTAL_CAPTURE_THEME)} };
             render();
           `);
           await new Promise((resolve) => setTimeout(resolve, 200));

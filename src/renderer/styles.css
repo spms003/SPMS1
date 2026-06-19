@@ -243,6 +243,17 @@ button { cursor: pointer; }
 .device-item > div { display:grid; gap:2px; }
 .device-item > div span, .device-version { color:var(--muted); font-size:10px; }
 .device-version { padding:4px 6px; border-radius:5px; background:var(--soft); }
+.theme-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
+.theme-choice { position:relative; display:grid; grid-template-columns:58px minmax(0,1fr) 20px; align-items:center; gap:10px; min-height:68px; padding:9px; border:1px solid var(--line); border-radius:10px; background:rgba(255,255,255,.76); color:var(--ink); text-align:left; }
+.theme-choice:hover { border-color:color-mix(in srgb,var(--accent) 45%,var(--line)); }
+.theme-choice.active { border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent); }
+.theme-choice > span:nth-child(2) { display:grid; gap:3px; }
+.theme-choice strong { font-size:11px; }
+.theme-choice small { color:var(--muted); font-size:9px; line-height:1.35; }
+.theme-choice b { visibility:hidden; color:var(--accent); }
+.theme-choice.active b { visibility:visible; }
+.theme-preview { display:grid; grid-template-columns:repeat(3,1fr); width:58px; height:44px; overflow:hidden; border:1px solid rgba(0,0,0,.1); border-radius:8px; box-shadow:0 3px 8px rgba(0,0,0,.08); }
+.theme-preview i { display:block; }
 .alert-card, .update-card { justify-items:center; padding:30px; text-align:center; }
 .alert-symbol, .update-symbol { display:grid; place-items:center; width:52px; height:52px; border-radius:13px; font-size:27px; font-weight:800; }
 .alert-symbol { border-radius:50%; background:#fff1ef; color:var(--danger); }
@@ -258,6 +269,95 @@ button { cursor: pointer; }
 .update-actions { display:flex; width:100%; gap:7px; }
 .update-actions button { flex:1; }
 
+html[data-theme="graphite-dark"] {
+  --ink:#f5f5f7;
+  --muted:#a9abb2;
+  --line:rgba(255,255,255,.12);
+  --surface:rgba(43,44,50,.88);
+  --soft:rgba(255,255,255,.08);
+  --shadow:0 16px 40px rgba(0,0,0,.3);
+}
+html[data-theme="graphite-dark"] body,
+html[data-theme="graphite-dark"] .desktop { background:#1d1e22; }
+html[data-theme="graphite-dark"] .mac-toolbar { border-bottom-color:rgba(255,255,255,.08); background:rgba(31,32,37,.88); box-shadow:0 1px 0 rgba(0,0,0,.35); }
+html[data-theme="graphite-dark"] .panel,
+html[data-theme="graphite-dark"] .shortcut-card { border-color:rgba(255,255,255,.08); background:rgba(43,44,50,.83); box-shadow:0 12px 34px rgba(0,0,0,.25); }
+html[data-theme="graphite-dark"] .weekly-timetable,
+html[data-theme="graphite-dark"] .timetable-select-grid,
+html[data-theme="graphite-dark"] .subject,
+html[data-theme="graphite-dark"] .meal-panel { background:rgba(24,25,29,.55); }
+html[data-theme="graphite-dark"] .modal-card { background:rgba(39,40,46,.97); }
+html[data-theme="graphite-dark"] .modal input,
+html[data-theme="graphite-dark"] .modal textarea,
+html[data-theme="graphite-dark"] .modal select,
+html[data-theme="graphite-dark"] .panel select,
+html[data-theme="graphite-dark"] .item-editor,
+html[data-theme="graphite-dark"] .subject-icon-item,
+html[data-theme="graphite-dark"] .device-item,
+html[data-theme="graphite-dark"] .school-result,
+html[data-theme="graphite-dark"] .theme-choice { background:#2c2d32; color:var(--ink); }
+html[data-theme="graphite-dark"] .admin-tabs button.active { background:#484950; color:#fff; }
+html[data-theme="graphite-dark"] .notice-list article,
+html[data-theme="graphite-dark"] .calendar-events div { border-color:var(--line); background:rgba(255,255,255,.05); }
+html[data-theme="graphite-dark"] .meal-menu span { color:#202126; background:#f2f2f4; }
+html[data-theme="graphite-dark"] .change-list div,
+html[data-theme="graphite-dark"] .change-preview { color:#5b421b; }
+html[data-theme="graphite-dark"] .change-list div span { color:#5b421b; }
+html[data-theme="graphite-dark"] .changed-subject { color:#f5f5f7; background:rgba(255,159,10,.11); }
+
+html[data-theme="ocean"] {
+  --ink:#17373a;
+  --muted:#5d7779;
+  --line:rgba(0,85,91,.13);
+  --surface:rgba(255,255,255,.84);
+  --soft:rgba(0,127,134,.08);
+  --shadow:0 14px 36px rgba(0,89,96,.1);
+}
+html[data-theme="ocean"] body,
+html[data-theme="ocean"] .desktop { background:linear-gradient(180deg,#f3fbfb,#dfeff0); }
+html[data-theme="ocean"] .mac-toolbar { background:rgba(235,248,248,.84); }
+html[data-theme="ocean"] .panel { border-color:rgba(255,255,255,.9); }
+
+html[data-theme="forest"] {
+  --ink:#20342a;
+  --muted:#64766b;
+  --line:rgba(35,104,64,.13);
+  --surface:rgba(255,255,255,.84);
+  --soft:rgba(39,134,74,.08);
+  --shadow:0 14px 36px rgba(30,92,52,.1);
+}
+html[data-theme="forest"] body,
+html[data-theme="forest"] .desktop { background:linear-gradient(180deg,#f5f8f5,#e3ece5); }
+html[data-theme="forest"] .mac-toolbar { background:rgba(239,246,240,.86); }
+
+html[data-theme="berry"] {
+  --ink:#3b2436;
+  --muted:#816879;
+  --line:rgba(121,49,96,.13);
+  --surface:rgba(255,255,255,.85);
+  --soft:rgba(180,58,134,.08);
+  --shadow:0 14px 36px rgba(114,38,87,.11);
+}
+html[data-theme="berry"] body,
+html[data-theme="berry"] .desktop { background:linear-gradient(180deg,#fcf7fb,#f0e5ef); }
+html[data-theme="berry"] .mac-toolbar { background:rgba(249,241,247,.86); }
+
+html[data-theme="high-contrast"] {
+  --ink:#000;
+  --muted:#3c3c3c;
+  --line:rgba(0,0,0,.28);
+  --surface:#fff;
+  --soft:#ececec;
+  --shadow:0 8px 0 rgba(0,0,0,.08);
+}
+html[data-theme="high-contrast"] body,
+html[data-theme="high-contrast"] .desktop { background:#fff; }
+html[data-theme="high-contrast"] .mac-toolbar { border-bottom:2px solid #000; background:#fff; backdrop-filter:none; }
+html[data-theme="high-contrast"] .panel,
+html[data-theme="high-contrast"] .shortcut-card { border:2px solid #000; box-shadow:none; backdrop-filter:none; }
+html[data-theme="high-contrast"] .weekly-timetable,
+html[data-theme="high-contrast"] .timetable-select-grid { border:2px solid #000; }
+
 @media (max-width:1000px) {
   .info-grid, .bottom-grid { grid-template-columns:1fr; }
 }
@@ -271,4 +371,5 @@ button { cursor: pointer; }
   .admin-grid, .editor-row, .broadcast-grid { grid-template-columns:1fr; }
   .device-item { grid-template-columns:9px 1fr auto; }
   .device-item button { grid-column:2/-1; }
+  .theme-grid { grid-template-columns:1fr; }
 }

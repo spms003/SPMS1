@@ -1,6 +1,6 @@
 {
   "name": "school-portal",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "description": "Windows school-wide portal launcher for students and staff.",
   "main": "src/main.js",
   "author": "School Portal",

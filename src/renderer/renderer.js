@@ -2,6 +2,14 @@ const api = window.schoolPortal;
 const $ = (selector) => document.querySelector(selector);
 const weekdays = ['월', '화', '수', '목', '금'];
 const calendarWeekdays = ['일', '월', '화', '수', '목', '금', '토'];
+const themes = [
+  { id: 'mac-light', name: 'macOS 라이트', description: '밝고 투명한 기본 스타일', colors: ['#f6f7f9', '#ffffff', '#0a84ff'] },
+  { id: 'graphite-dark', name: '그래파이트 다크', description: '어두운 교무실·야간 환경', colors: ['#1d1e22', '#2c2d32', '#64d2ff'] },
+  { id: 'ocean', name: '오션', description: '청록과 파랑의 시원한 스타일', colors: ['#eaf7f7', '#ffffff', '#007f86'] },
+  { id: 'forest', name: '포레스트', description: '차분한 녹색과 중성 회색', colors: ['#eef4ef', '#ffffff', '#27864a'] },
+  { id: 'berry', name: '베리', description: '밝은 자주색과 산뜻한 대비', colors: ['#f7f0f7', '#ffffff', '#b43a86'] },
+  { id: 'high-contrast', name: '고대비', description: '가독성을 높인 선명한 화면', colors: ['#ffffff', '#f2f2f2', '#005fcc'] }
+];
 const subjectIconPresets = [
   { id: 'book-open', glyph: '책', name: '책' },
   { id: 'calculator', glyph: '123', name: '계산' },
@@ -89,6 +97,7 @@ function iconMarkup(shortcut) {
 }
 
 function render() {
+  document.documentElement.dataset.theme = state.appearance?.theme || 'mac-light';
   document.documentElement.style.setProperty('--accent', state.school.accent || '#007aff');
   $('#schoolName').textContent = state.school.name || 'School Portal';
   $('#schoolLogo').innerHTML = state.school.logo
@@ -473,6 +482,19 @@ function syncChangeForm(preserveOriginal = false) {
 
 function schoolEditor() {
   return `
+    <div class="item-editor theme-editor">
+      <h3>화면 테마</h3>
+      <div class="theme-grid">
+        ${themes.map((theme) => `
+          <button class="theme-choice ${(state.appearance?.theme || 'mac-light') === theme.id ? 'active' : ''}" data-theme-choice="${theme.id}">
+            <span class="theme-preview">${theme.colors.map((color) => `<i style="background:${color}"></i>`).join('')}</span>
+            <span><strong>${theme.name}</strong><small>${theme.description}</small></span>
+            <b>✓</b>
+          </button>
+        `).join('')}
+      </div>
+      <p class="helper-text">테마를 선택하면 즉시 적용되고 자동 저장됩니다.</p>
+    </div>
     <div class="admin-grid">
       <label>학교 이름<input data-school="name" value="${escapeHtml(state.school.name)}" /></label>
       <label>강조 색상<input data-school="accent" type="color" value="${escapeHtml(state.school.accent)}" /></label>
@@ -698,6 +720,9 @@ $('#adminContent').addEventListener('click', async (event) => {
     if (file) document.querySelector('[data-school="logo"]').value = file;
   }
   if (target.id === 'saveSchoolBtn') await saveSchool();
+  if (target.dataset.themeChoice) {
+    await saveConfig({ appearance: { ...(state.appearance || {}), theme: target.dataset.themeChoice } });
+  }
   if (target.id === 'searchNeisSchoolBtn') await searchNeisSchools();
   if (target.dataset.selectNeisSchool) selectNeisSchool(target.dataset.selectNeisSchool);
   if (target.id === 'addShortcutBtn') {

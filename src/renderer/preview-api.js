@@ -12,6 +12,7 @@ if (!window.schoolPortal) {
       neisOfficeCode: 'B10',
       neisSchoolCode: '7010000'
     },
+    appearance: { theme: 'mac-light' },
     categories: [{ id: 'service', name: '학교 서비스' }],
     shortcuts: [
       { id: 'youtube', title: '유튜브', subtitle: '교육 영상과 학교 채널', target: '#', type: 'url', iconPath: 'https://www.google.com/s2/favicons?domain=youtube.com&sz=128' },
