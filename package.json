@@ -1,6 +1,6 @@
 {
   "name": "school-portal",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "description": "Windows school-wide portal launcher for students and staff.",
   "main": "src/main.js",
   "author": "School Portal",
@@ -48,7 +48,7 @@
       "target": [
         "nsis"
       ],
-      "artifactName": "School-Portal-Setup-${version}.${ext}"
+      "artifactName": "School-Portal-Setup.${ext}"
     },
     "nsis": {
       "oneClick": false,

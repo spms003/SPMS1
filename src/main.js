@@ -33,6 +33,7 @@ let alertOriginalVolume = null;
 let alertVolumeRestoreTimer;
 const onlineDevices = new Map();
 const receivedMessages = new Set();
+const shortcutWindows = new Map();
 
 const WINDOWS_VOLUME_TYPE = `
 using System;
@@ -784,6 +785,15 @@ ipcMain.handle('shortcut:launch', async (_event, shortcut) => {
     return { ok: result === '', message: result };
   }
 
+  const existingWindow = shortcutWindows.get(shortcut.id);
+  if (existingWindow && !existingWindow.isDestroyed()) {
+    if (existingWindow.isMinimized()) existingWindow.restore();
+    existingWindow.show();
+    existingWindow.setFullScreen(true);
+    existingWindow.focus();
+    return { ok: true, restored: true };
+  }
+
   createShortcutWindow(shortcut);
   return { ok: true };
 });
@@ -812,8 +822,13 @@ function createShortcutWindow(shortcut) {
       webviewTag: true
     }
   });
+  child.schoolPortalShortcutId = shortcut.id;
+  shortcutWindows.set(shortcut.id, child);
   child.setMenuBarVisibility(false);
-  child.on('closed', restoreMainWindow);
+  child.on('closed', () => {
+    if (shortcutWindows.get(shortcut.id) === child) shortcutWindows.delete(shortcut.id);
+    restoreMainWindow();
+  });
   child.loadFile(path.join(__dirname, 'renderer', 'browser.html'), {
     query: { title: shortcut.title, url: shortcut.target }
   });
@@ -822,7 +837,7 @@ function createShortcutWindow(shortcut) {
 
 ipcMain.handle('browser:minimize', (event) => {
   const window = BrowserWindow.fromWebContents(event.sender);
-  if (window && window !== mainWindow) window.minimize();
+  if (window && window !== mainWindow) window.hide();
   restoreMainWindow();
   return true;
 });

@@ -666,6 +666,7 @@ function updateEditor() {
       <p class="update-channel-copy">School Portal은 시작할 때와 실행 중 4시간마다 새 버전을 확인합니다. 새 버전은 자동 다운로드되고 60초 후 설치됩니다.</p>
       <div class="actions">
         <button class="primary-button" id="checkAutoUpdateBtn">지금 업데이트 확인</button>
+        <button class="secondary-button" id="openLatestReleaseBtn">최신 설치 파일 다운로드</button>
       </div>
       <div id="updateResult" class="result-box"></div>
     </div>
@@ -778,6 +779,9 @@ $('#adminContent').addEventListener('click', async (event) => {
     $('#updateResult').textContent = '새 버전을 확인하는 중입니다...';
     const result = await api.checkAutoUpdate();
     if (!result.ok) $('#updateResult').textContent = result.message;
+  }
+  if (target.id === 'openLatestReleaseBtn') {
+    await api.openUpdateDownload('https://github.com/spms003/SPMS1/releases/latest/download/School-Portal-Setup.exe');
   }
   if (target.dataset.remoteSupport) {
     const result = await api.requestRemoteSupport(target.dataset.remoteSupport);
