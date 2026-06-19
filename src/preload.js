@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('schoolPortal', {
   pickUpdateInstaller: () => ipcRenderer.invoke('dialog:pickUpdateInstaller'),
   searchNeisSchool: (schoolName) => ipcRenderer.invoke('neis:searchSchool', schoolName),
   getNeisMeal: (date) => ipcRenderer.invoke('neis:getMeal', date),
+  syncNeisSchedule: (options) => ipcRenderer.invoke('neis:syncSchedule', options),
   publishLanUpdate: (info) => ipcRenderer.invoke('update:publishLan', info),
   downloadUpdate: (update) => ipcRenderer.invoke('update:download', update),
   installUpdate: () => ipcRenderer.invoke('update:install'),

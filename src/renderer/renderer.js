@@ -53,6 +53,14 @@ function todayKey() {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+function academicYearRange(reference = new Date()) {
+  const year = reference.getMonth() >= 2 ? reference.getFullYear() : reference.getFullYear() - 1;
+  return {
+    from: `${year}-03-01`,
+    to: `${year + 1}-02-28`
+  };
+}
+
 function uid(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
@@ -601,9 +609,26 @@ function classEditor() {
 }
 
 function calendarEditor() {
+  const range = academicYearRange();
+  const lastSync = state.school.lastScheduleSyncAt
+    ? new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(state.school.lastScheduleSyncAt))
+    : '아직 동기화하지 않음';
   return `
+    <div class="item-editor schedule-sync-card">
+      <div class="schedule-sync-heading">
+        <div><h3>NEIS 학사일정 동기화</h3><p class="helper-text">선택한 학교의 공식 학사일정을 가져와 교내 모든 PC에 반영합니다.</p></div>
+        <span class="sync-status">${escapeHtml(lastSync)}</span>
+      </div>
+      <div class="editor-row">
+        <label>시작일<input id="scheduleSyncFrom" type="date" value="${range.from}" /></label>
+        <label>종료일<input id="scheduleSyncTo" type="date" value="${range.to}" /></label>
+      </div>
+      <label class="check-label"><input id="scheduleSyncEnabled" type="checkbox" ${state.school.scheduleSyncEnabled !== false ? 'checked' : ''} /> 앱 시작 후와 12시간마다 자동 동기화</label>
+      <div class="actions"><button class="primary-button" id="syncNeisScheduleBtn">지금 일정 동기화</button></div>
+      <div id="scheduleSyncResult" class="result-box"></div>
+    </div>
     <div class="item-editor">
-      <h3>학사일정 추가</h3>
+      <h3>직접 일정 추가</h3>
       <div class="editor-row">
         <label>날짜<input id="newScheduleDate" type="date" value="${todayKey()}" /></label>
         <label>일정<input id="newScheduleTitle" placeholder="예: 현장체험학습" /></label>
@@ -611,7 +636,8 @@ function calendarEditor() {
       <div class="actions"><button class="primary-button" id="addScheduleBtn">일정 추가</button></div>
     </div>
     ${[...state.schedules].sort((a, b) => a.date.localeCompare(b.date)).map((item) => `
-      <div class="list-editor"><time>${escapeHtml(item.date)}</time><strong>${escapeHtml(item.title)}</strong>
+      <div class="list-editor schedule-list-item"><time>${escapeHtml(item.date)}</time><strong>${escapeHtml(item.title)}</strong>
+        <span class="schedule-source ${item.source === 'neis' ? 'neis' : 'manual'}">${item.source === 'neis' ? 'NEIS' : '직접 입력'}</span>
         <button class="danger-button compact-button" data-delete-schedule="${item.id}">삭제</button>
       </div>`).join('')}`;
 }
@@ -769,6 +795,7 @@ $('#adminContent').addEventListener('click', async (event) => {
     const title = $('#newScheduleTitle').value.trim();
     if (date && title) await saveConfig({ schedules: [...state.schedules, { id: uid('schedule'), date, title }] });
   }
+  if (target.id === 'syncNeisScheduleBtn') await syncNeisSchedule();
   if (target.dataset.deleteSchedule) await saveConfig({ schedules: state.schedules.filter((item) => item.id !== target.dataset.deleteSchedule) });
   if (target.id === 'publishNoticeBtn') await publishNotice();
   if (target.id === 'publishChangeBtn') await publishChange();
@@ -790,6 +817,10 @@ $('#adminContent').addEventListener('click', async (event) => {
 });
 
 $('#adminContent').addEventListener('change', (event) => {
+  if (event.target.id === 'scheduleSyncEnabled') {
+    saveConfig({ school: { ...state.school, scheduleSyncEnabled: event.target.checked } });
+    return;
+  }
   if (event.target.dataset.subjectIcon) {
     saveConfig({
       subjectIcons: {
@@ -806,6 +837,28 @@ $('#adminContent').addEventListener('change', (event) => {
     cell.classList.toggle('period-seven-hidden', !showSeventh);
   });
 });
+
+async function syncNeisSchedule() {
+  const button = $('#syncNeisScheduleBtn');
+  const resultBox = $('#scheduleSyncResult');
+  button.disabled = true;
+  button.textContent = '동기화 중...';
+  resultBox.textContent = 'NEIS에서 학사일정을 불러오는 중입니다.';
+  const result = await api.syncNeisSchedule({
+    from: $('#scheduleSyncFrom').value,
+    to: $('#scheduleSyncTo').value
+  });
+  if (!result.ok) {
+    button.disabled = false;
+    button.textContent = '다시 시도';
+    resultBox.textContent = result.message;
+    return;
+  }
+  state = result.config;
+  render();
+  renderAdmin();
+  $('#scheduleSyncResult').textContent = `${result.message} 다른 PC에도 동기화 정보를 전송했습니다.`;
+}
 
 $('#adminContent').addEventListener('change', (event) => {
   if (['changeClassId', 'changeDate', 'changePeriod'].includes(event.target.id)) {

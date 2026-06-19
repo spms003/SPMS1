@@ -10,7 +10,9 @@ if (!window.schoolPortal) {
       updateFeedUrl: '',
       networkSyncPath: '',
       neisOfficeCode: 'B10',
-      neisSchoolCode: '7010000'
+      neisSchoolCode: '7010000',
+      scheduleSyncEnabled: true,
+      lastScheduleSyncAt: new Date().toISOString()
     },
     appearance: { theme: 'mac-light' },
     categories: [{ id: 'service', name: '학교 서비스' }],
@@ -81,6 +83,14 @@ if (!window.schoolPortal) {
     pickUpdateInstaller: async () => '',
     searchNeisSchool: async () => ({ ok: true, schools: [{ officeCode: 'B10', officeName: '서울특별시교육청', schoolCode: '7010000', schoolName: '샘플초등학교', address: '서울특별시' }] }),
     getNeisMeal: async () => ({ ok: true, mealName: '중식', calories: '675 Kcal', menu: ['쌀밥', '소고기미역국', '돼지갈비', '감자채볶음', '배추김치', '과일'] }),
+    syncNeisSchedule: async () => {
+      previewState.schedules = [
+        ...previewState.schedules,
+        { id: 'neis-1', date: today, title: '학교 공개의 날', source: 'neis', syncedAt: new Date().toISOString() }
+      ];
+      previewState.school.lastScheduleSyncAt = new Date().toISOString();
+      return { ok: true, count: 1, message: '1개의 학사일정을 동기화했습니다.', config: previewState };
+    },
     publishLanUpdate: async () => ({ ok: true, message: '업데이트 배포 완료' }),
     downloadUpdate: async () => ({ ok: true }),
     installUpdate: async () => ({ ok: true }),

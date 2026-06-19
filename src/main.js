@@ -9,8 +9,9 @@ const os = require('os');
 const { spawn, execFile } = require('child_process');
 const { autoUpdater } = require('electron-updater');
 
-const APP_CONFIG_VERSION = 13;
+const APP_CONFIG_VERSION = 14;
 const SYNC_INTERVAL_MS = 5000;
+const ACADEMIC_SCHEDULE_SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000;
 const SHARED_KEYS = ['shortcuts', 'categories', 'classes', 'subjectCatalog', 'subjectIcons', 'appearance', 'notices', 'schedules', 'timetableChanges'];
 const LAN_GROUP = '239.255.42.99';
 const LAN_PORT = 41234;
@@ -28,6 +29,8 @@ let updateBroadcastTimer;
 let heartbeatTimer;
 let updateCheckTimer;
 let autoUpdateInstallTimer;
+let academicScheduleSyncTimer;
+let academicScheduleSyncTimeout;
 let autoUpdateReady = false;
 let alertOriginalVolume = null;
 let alertVolumeRestoreTimer;
@@ -161,7 +164,9 @@ function createDefaults() {
       updateFeedUrl: '',
       networkSyncPath: '',
       neisOfficeCode: '',
-      neisSchoolCode: ''
+      neisSchoolCode: '',
+      scheduleSyncEnabled: true,
+      lastScheduleSyncAt: ''
     },
     admin: { passwordHash: hashPassword('admin1234') },
     device: { id: crypto.randomUUID() },
@@ -434,6 +439,7 @@ function startLanService() {
       receivedMessages.add(packet.messageId);
       setTimeout(() => receivedMessages.delete(packet.messageId), 10 * 60 * 1000);
       if (packet.type === 'announcement') receiveLanAnnouncement(packet.payload);
+      if (packet.type === 'calendar-sync') receiveLanCalendarSync(packet.payload);
       if (packet.type === 'update') receiveLanUpdate(packet.payload, remote.address);
       if (packet.type === 'heartbeat') receiveHeartbeat(packet.payload, remote.address);
       if (packet.type === 'remote-support-request') receiveRemoteSupportRequest(packet.payload);
@@ -602,6 +608,17 @@ function receiveLanAnnouncement(payload) {
   }
 }
 
+function receiveLanCalendarSync(payload) {
+  if (!Array.isArray(payload?.schedules)) return;
+  store.set('schedules', payload.schedules);
+  if (payload.syncedAt) {
+    store.set('school', { ...store.get('school'), lastScheduleSyncAt: payload.syncedAt });
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('config:changed', { config: store.store, alert: null });
+  }
+}
+
 function receiveLanUpdate(payload, senderAddress) {
   if (!payload?.version || compareVersions(payload.version, app.getVersion()) <= 0) return;
   const update = {
@@ -620,6 +637,7 @@ app.whenReady().then(() => {
   createWindow();
   restartSharedSync();
   startLanService();
+  restartAcademicScheduleSync();
   setupAutoUpdater();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -637,6 +655,8 @@ app.on('before-quit', () => {
   if (heartbeatTimer) clearInterval(heartbeatTimer);
   if (updateCheckTimer) clearInterval(updateCheckTimer);
   if (autoUpdateInstallTimer) clearTimeout(autoUpdateInstallTimer);
+  if (academicScheduleSyncTimer) clearInterval(academicScheduleSyncTimer);
+  if (academicScheduleSyncTimeout) clearTimeout(academicScheduleSyncTimeout);
   restoreAlertVolume();
 });
 
@@ -653,6 +673,7 @@ ipcMain.handle('config:update', (_event, patch) => {
     setAutoLaunch(store.get('school.startWithWindows'));
     if (mainWindow) mainWindow.setFullScreen(Boolean(store.get('school.fullScreenOnLaunch')));
     if (previousSyncPath !== store.get('school.networkSyncPath')) restartSharedSync();
+    restartAcademicScheduleSync();
   }
   for (const key of [...SHARED_KEYS, 'recent', 'selectedClassId']) {
     if (Object.prototype.hasOwnProperty.call(patch, key)) store.set(key, patch[key]);
@@ -938,6 +959,106 @@ ipcMain.handle('neis:getMeal', async (_event, date) => {
     return { ok: false, message: `급식 정보를 불러오지 못했습니다: ${error.message}` };
   }
 });
+
+ipcMain.handle('neis:syncSchedule', async (_event, options = {}) => {
+  return syncAcademicSchedule(options.from, options.to, { broadcast: true });
+});
+
+function academicYearRange(reference = new Date()) {
+  const year = reference.getMonth() >= 2 ? reference.getFullYear() : reference.getFullYear() - 1;
+  return {
+    from: `${year}-03-01`,
+    to: `${year + 1}-02-28`
+  };
+}
+
+function scheduleSyncDate(value, fallback) {
+  const date = String(value || fallback || '');
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : fallback;
+}
+
+async function syncAcademicSchedule(fromValue, toValue, { broadcast = false } = {}) {
+  const officeCode = String(store.get('school.neisOfficeCode') || '').trim();
+  const schoolCode = String(store.get('school.neisSchoolCode') || '').trim();
+  if (!officeCode || !schoolCode) {
+    return { ok: false, message: '관리자 페이지에서 NEIS 학교를 먼저 선택해 주세요.' };
+  }
+
+  const defaults = academicYearRange();
+  const from = scheduleSyncDate(fromValue, defaults.from);
+  const to = scheduleSyncDate(toValue, defaults.to);
+  if (from > to) return { ok: false, message: '동기화 시작일은 종료일보다 늦을 수 없습니다.' };
+
+  try {
+    const url = `https://open.neis.go.kr/hub/SchoolSchedule?Type=json&pIndex=1&pSize=1000&ATPT_OFCDC_SC_CODE=${encodeURIComponent(officeCode)}&SD_SCHUL_CODE=${encodeURIComponent(schoolCode)}&AA_FROM_YMD=${from.replaceAll('-', '')}&AA_TO_YMD=${to.replaceAll('-', '')}`;
+    const data = await fetchJson(url);
+    const rows = neisRows(data, 'SchoolSchedule');
+    const seen = new Set();
+    const syncedAt = new Date().toISOString();
+    const remoteSchedules = rows
+      .map((row) => ({
+        date: String(row.AA_YMD || '').replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3'),
+        title: String(row.EVENT_NM || '').trim()
+      }))
+      .filter((item) => item.date && item.title)
+      .filter((item) => {
+        const key = `${item.date}:${item.title}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map((item) => ({
+        id: `neis-${crypto.createHash('sha1').update(`${schoolCode}:${item.date}:${item.title}`).digest('hex').slice(0, 16)}`,
+        ...item,
+        source: 'neis',
+        syncedAt
+      }));
+
+    const current = store.get('schedules') || [];
+    const retained = current.filter((item) => item.source !== 'neis' || item.date < from || item.date > to);
+    const manualKeys = new Set(retained.filter((item) => item.source !== 'neis').map((item) => `${item.date}:${item.title}`));
+    const schedules = [
+      ...retained,
+      ...remoteSchedules.filter((item) => !manualKeys.has(`${item.date}:${item.title}`))
+    ].sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title, 'ko'));
+
+    store.set('schedules', schedules);
+    store.set('school', { ...store.get('school'), lastScheduleSyncAt: syncedAt });
+    writeSharedData();
+    if (broadcast) sendLanPacket('calendar-sync', { schedules, syncedAt });
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('config:changed', { config: store.store, alert: null });
+    }
+    return {
+      ok: true,
+      count: remoteSchedules.length,
+      from,
+      to,
+      syncedAt,
+      config: store.store,
+      message: `${remoteSchedules.length}개의 학사일정을 동기화했습니다.`
+    };
+  } catch (error) {
+    return { ok: false, message: `학사일정 동기화 실패: ${error.message}` };
+  }
+}
+
+function restartAcademicScheduleSync() {
+  if (academicScheduleSyncTimer) clearInterval(academicScheduleSyncTimer);
+  if (academicScheduleSyncTimeout) clearTimeout(academicScheduleSyncTimeout);
+  academicScheduleSyncTimer = null;
+  academicScheduleSyncTimeout = null;
+  if (!store?.get('school.scheduleSyncEnabled')) return;
+
+  const run = () => {
+    const lastSync = Date.parse(store.get('school.lastScheduleSyncAt') || '');
+    if (!Number.isFinite(lastSync) || Date.now() - lastSync >= ACADEMIC_SCHEDULE_SYNC_INTERVAL_MS) {
+      syncAcademicSchedule(undefined, undefined, { broadcast: true }).catch(() => {});
+    }
+  };
+  academicScheduleSyncTimeout = setTimeout(run, 10000);
+  academicScheduleSyncTimer = setInterval(run, ACADEMIC_SCHEDULE_SYNC_INTERVAL_MS);
+}
 
 ipcMain.handle('update:publishLan', async (_event, info) => {
   const installerPath = String(info.installerPath || '');
