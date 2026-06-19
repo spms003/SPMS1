@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('schoolPortal', {
   downloadUpdate: (update) => ipcRenderer.invoke('update:download', update),
   installUpdate: () => ipcRenderer.invoke('update:install'),
   acknowledgeAlert: () => ipcRenderer.invoke('alert:ack'),
+  boostAlertVolume: () => ipcRenderer.invoke('alert:boostVolume'),
+  restoreAlertVolume: () => ipcRenderer.invoke('alert:restoreVolume'),
   getDevices: () => ipcRenderer.invoke('devices:get'),
   requestRemoteSupport: (deviceId) => ipcRenderer.invoke('remote-support:request', deviceId),
   checkAutoUpdate: () => ipcRenderer.invoke('update:autoCheck'),

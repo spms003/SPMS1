@@ -6,10 +6,10 @@ const https = require('https');
 const http = require('http');
 const dgram = require('dgram');
 const os = require('os');
-const { spawn } = require('child_process');
+const { spawn, execFile } = require('child_process');
 const { autoUpdater } = require('electron-updater');
 
-const APP_CONFIG_VERSION = 11;
+const APP_CONFIG_VERSION = 12;
 const SYNC_INTERVAL_MS = 5000;
 const SHARED_KEYS = ['shortcuts', 'categories', 'classes', 'subjectCatalog', 'subjectIcons', 'notices', 'schedules', 'timetableChanges'];
 const LAN_GROUP = '239.255.42.99';
@@ -29,8 +29,63 @@ let heartbeatTimer;
 let updateCheckTimer;
 let autoUpdateInstallTimer;
 let autoUpdateReady = false;
+let alertOriginalVolume = null;
+let alertVolumeRestoreTimer;
 const onlineDevices = new Map();
 const receivedMessages = new Set();
+
+const WINDOWS_VOLUME_TYPE = `
+using System;
+using System.Runtime.InteropServices;
+public enum EDataFlow { eRender, eCapture, eAll }
+public enum ERole { eConsole, eMultimedia, eCommunications }
+[ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
+public class MMDeviceEnumeratorComObject {}
+[ComImport, Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+public interface IMMDeviceEnumerator {
+  int NotImpl1();
+  [PreserveSig] int GetDefaultAudioEndpoint(EDataFlow dataFlow, ERole role, out IMMDevice ppDevice);
+}
+[ComImport, Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+public interface IMMDevice {
+  [PreserveSig] int Activate(ref Guid iid, int dwClsCtx, IntPtr pActivationParams, [MarshalAs(UnmanagedType.IUnknown)] out object ppInterface);
+}
+[ComImport, Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+public interface IAudioEndpointVolume {
+  int RegisterControlChangeNotify(IntPtr pNotify);
+  int UnregisterControlChangeNotify(IntPtr pNotify);
+  int GetChannelCount(ref uint pnChannelCount);
+  int SetMasterVolumeLevel(float fLevelDB, Guid pguidEventContext);
+  int SetMasterVolumeLevelScalar(float fLevel, Guid pguidEventContext);
+  int GetMasterVolumeLevel(ref float pfLevelDB);
+  int GetMasterVolumeLevelScalar(ref float pfLevel);
+  int SetChannelVolumeLevel(uint nChannel, float fLevelDB, Guid pguidEventContext);
+  int SetChannelVolumeLevelScalar(uint nChannel, float fLevel, Guid pguidEventContext);
+  int GetChannelVolumeLevel(uint nChannel, ref float pfLevelDB);
+  int GetChannelVolumeLevelScalar(uint nChannel, ref float pfLevel);
+  int SetMute([MarshalAs(UnmanagedType.Bool)] bool bMute, Guid pguidEventContext);
+  int GetMute(ref bool pbMute);
+}
+public static class SchoolPortalAudio {
+  static IAudioEndpointVolume Endpoint() {
+    var enumerator = (IMMDeviceEnumerator)(new MMDeviceEnumeratorComObject());
+    IMMDevice device;
+    Marshal.ThrowExceptionForHR(enumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eMultimedia, out device));
+    Guid iid = typeof(IAudioEndpointVolume).GUID;
+    object endpoint;
+    Marshal.ThrowExceptionForHR(device.Activate(ref iid, 23, IntPtr.Zero, out endpoint));
+    return (IAudioEndpointVolume)endpoint;
+  }
+  public static float GetVolume() {
+    float value = 0;
+    Marshal.ThrowExceptionForHR(Endpoint().GetMasterVolumeLevelScalar(ref value));
+    return value;
+  }
+  public static void SetVolume(float value) {
+    Marshal.ThrowExceptionForHR(Endpoint().SetMute(false, Guid.Empty));
+    Marshal.ThrowExceptionForHR(Endpoint().SetMasterVolumeLevelScalar(Math.Max(0, Math.Min(1, value)), Guid.Empty));
+  }
+}`;
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
@@ -573,6 +628,7 @@ app.on('before-quit', () => {
   if (heartbeatTimer) clearInterval(heartbeatTimer);
   if (updateCheckTimer) clearInterval(updateCheckTimer);
   if (autoUpdateInstallTimer) clearTimeout(autoUpdateInstallTimer);
+  restoreAlertVolume();
 });
 
 ipcMain.handle('config:get', () => store.store);
@@ -649,8 +705,59 @@ ipcMain.handle('update:defer', () => {
   return true;
 });
 
+function runVolumeScript(command) {
+  return new Promise((resolve, reject) => {
+    const script = `
+Add-Type -TypeDefinition @'
+${WINDOWS_VOLUME_TYPE}
+'@
+${command}
+`;
+    const encoded = Buffer.from(script, 'utf16le').toString('base64');
+    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded], {
+      windowsHide: true,
+      timeout: 12000
+    }, (error, stdout) => {
+      if (error) reject(error);
+      else resolve(String(stdout).trim());
+    });
+  });
+}
+
+async function restoreAlertVolume() {
+  if (alertVolumeRestoreTimer) clearTimeout(alertVolumeRestoreTimer);
+  alertVolumeRestoreTimer = null;
+  if (alertOriginalVolume === null) return false;
+  const original = alertOriginalVolume;
+  alertOriginalVolume = null;
+  try {
+    await runVolumeScript(`[SchoolPortalAudio]::SetVolume(${original.toFixed(4)})`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+ipcMain.handle('alert:boostVolume', async () => {
+  try {
+    if (alertOriginalVolume === null) {
+      const current = Number(await runVolumeScript('[SchoolPortalAudio]::GetVolume().ToString([System.Globalization.CultureInfo]::InvariantCulture)'));
+      if (Number.isFinite(current)) alertOriginalVolume = current;
+    }
+    await runVolumeScript('[SchoolPortalAudio]::SetVolume(1.0)');
+    if (alertVolumeRestoreTimer) clearTimeout(alertVolumeRestoreTimer);
+    alertVolumeRestoreTimer = setTimeout(restoreAlertVolume, 9000);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, message: error.message };
+  }
+});
+
+ipcMain.handle('alert:restoreVolume', () => restoreAlertVolume());
+
 ipcMain.handle('alert:ack', () => {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.flashFrame(false);
+  restoreAlertVolume();
   return true;
 });
 

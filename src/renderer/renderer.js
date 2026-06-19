@@ -29,6 +29,8 @@ let availableUpdate = null;
 let deferredUpdateVersion = '';
 let mealRequestKey = '';
 let devices = [];
+let activeAlertAudio = null;
+let alertRestoreTimer = null;
 
 function escapeHtml(value = '') {
   return String(value)
@@ -237,24 +239,47 @@ function renderUrgent() {
     : '';
 }
 
-function playAlertSound() {
+async function stopAlertSound() {
+  if (alertRestoreTimer) clearTimeout(alertRestoreTimer);
+  alertRestoreTimer = null;
+  if (activeAlertAudio) {
+    try {
+      await activeAlertAudio.close();
+    } catch {
+      // The audio context may already be closed.
+    }
+    activeAlertAudio = null;
+  }
+  await api.restoreAlertVolume?.();
+}
+
+async function playAlertSound() {
+  await stopAlertSound();
+  await api.boostAlertVolume?.();
   try {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     const context = new AudioContext();
-    const gain = context.createGain();
-    gain.connect(context.destination);
-    gain.gain.setValueAtTime(0.0001, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.22, context.currentTime + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.8);
-    [660, 880].forEach((frequency, index) => {
-      const oscillator = context.createOscillator();
-      oscillator.frequency.value = frequency;
-      oscillator.connect(gain);
-      oscillator.start(context.currentTime + index * 0.18);
-      oscillator.stop(context.currentTime + 0.42 + index * 0.18);
-    });
+    activeAlertAudio = context;
+    for (let repeat = 0; repeat < 5; repeat += 1) {
+      const start = context.currentTime + repeat * 1.15;
+      const gain = context.createGain();
+      gain.connect(context.destination);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.92, start + 0.025);
+      gain.gain.setValueAtTime(0.92, start + 0.48);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.82);
+      [740, 988, 740].forEach((frequency, index) => {
+        const oscillator = context.createOscillator();
+        oscillator.type = index === 1 ? 'square' : 'sine';
+        oscillator.frequency.value = frequency;
+        oscillator.connect(gain);
+        oscillator.start(start + index * 0.18);
+        oscillator.stop(start + 0.34 + index * 0.18);
+      });
+    }
+    alertRestoreTimer = setTimeout(stopAlertSound, 6800);
   } catch {
-    // Audio may be unavailable under restrictive device policies.
+    alertRestoreTimer = setTimeout(stopAlertSound, 1000);
   }
 }
 
@@ -316,6 +341,7 @@ function bindEvents() {
   $('#adminCloseBtn').addEventListener('click', () => $('#adminDialog').close());
   $('#alertCloseBtn').addEventListener('click', () => {
     $('#alertDialog').close();
+    stopAlertSound();
     api.acknowledgeAlert?.();
   });
   $('#updateLaterBtn').addEventListener('click', () => {

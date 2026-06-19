@@ -84,6 +84,8 @@ if (!window.schoolPortal) {
     downloadUpdate: async () => ({ ok: true }),
     installUpdate: async () => ({ ok: true }),
     acknowledgeAlert: async () => true,
+    boostAlertVolume: async () => ({ ok: true }),
+    restoreAlertVolume: async () => true,
     getDevices: async () => [
       { id: 'pc-1', name: 'CLASS-101-PC', user: 'student', address: '192.168.0.21', version: '1.7.0' },
       { id: 'pc-2', name: 'TEACHERS-OFFICE', user: 'teacher', address: '192.168.0.31', version: '1.7.0' }
