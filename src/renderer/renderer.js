@@ -61,6 +61,24 @@ function subjectIconMarkup(subject) {
   return `<span class="subject-icon subject-icon-${escapeHtml(icon.id)}" title="${escapeHtml(icon.name)}">${escapeHtml(icon.glyph)}</span>`;
 }
 
+function timetableDayIndex(date) {
+  if (!date) return -1;
+  const day = new Date(`${date}T12:00:00`).getDay() - 1;
+  return day >= 0 && day < 5 ? day : -1;
+}
+
+function shortDate(date) {
+  if (!date) return '';
+  return `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`;
+}
+
+function changeDescription(change) {
+  if (!change.originalSubject || !change.changedSubject) return change.body || '';
+  const date = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })
+    .format(new Date(`${change.date}T12:00:00`));
+  return `${date} ${change.period}교시 ${change.originalSubject} → ${change.changedSubject}으로 변경`;
+}
+
 function iconMarkup(shortcut) {
   const fallback = escapeHtml(shortcut.title.slice(0, 2).toUpperCase());
   return shortcut.iconPath
@@ -125,8 +143,18 @@ function renderClass() {
   for (let period = 0; period < maxPeriods; period += 1) {
     cells.push(`<div class="period">${period + 1}</div>`);
     weekdays.forEach((_day, dayIndex) => {
-      const subject = current.timetable[dayIndex]?.[period] || '';
-      cells.push(`<div class="subject">${subject ? `${subjectIconMarkup(subject)}<span>${escapeHtml(subject)}</span>` : '<span>-</span>'}</div>`);
+      const scheduledSubject = current.timetable[dayIndex]?.[period] || '';
+      const change = state.timetableChanges
+        .filter((item) => item.classId === current.id && timetableDayIndex(item.date) === dayIndex && Number(item.period) === period + 1)
+        .sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
+      const subject = change?.changedSubject || scheduledSubject;
+      const changeTitle = change ? `${changeDescription(change)}` : '';
+      cells.push(`
+        <div class="subject${change ? ' changed-subject' : ''}" ${changeTitle ? `title="${escapeHtml(changeTitle)}"` : ''}>
+          ${subject ? `${subjectIconMarkup(subject)}<span>${escapeHtml(subject)}</span>` : '<span>-</span>'}
+          ${change ? `<small class="change-date">${escapeHtml(shortDate(change.date))} 변경</small>` : ''}
+        </div>
+      `);
     });
   }
   $('#weeklyTimetable').style.setProperty('--rows', maxPeriods);
@@ -134,10 +162,11 @@ function renderClass() {
 
   const changes = state.timetableChanges
     .filter((item) => !item.classId || item.classId === current.id)
-    .slice(0, 3);
+    .sort((a, b) => String(b.date || b.createdAt).localeCompare(String(a.date || a.createdAt)))
+    .slice(0, 5);
   $('#changeList').innerHTML = changes.length
-    ? `<h3>최근 시간표 변경</h3>${changes.map((item) => `
-        <div><b>${escapeHtml(item.date || '')}</b><span>${escapeHtml(item.body)}</span></div>
+    ? `<h3>시간표 변경 내역</h3>${changes.map((item) => `
+        <div><b>${escapeHtml(shortDate(item.date))}</b><span>${escapeHtml(changeDescription(item))}</span></div>
       `).join('')}`
     : '';
 }
@@ -390,6 +419,30 @@ function renderAdmin() {
   };
   $('#adminContent').innerHTML = views[adminTab]();
   setAdminValues();
+  if (adminTab === 'broadcast') syncChangeForm();
+}
+
+function syncChangeForm(preserveOriginal = false) {
+  const classSelect = $('#changeClassId');
+  if (!classSelect) return;
+  const targetClass = state.classes.find((item) => item.id === classSelect.value) || state.classes[0];
+  const periodSelect = $('#changePeriod');
+  const periods = Number(targetClass?.periods) === 7 ? 7 : 6;
+  const previousPeriod = Math.min(Number(periodSelect.value || 1), periods);
+  periodSelect.innerHTML = Array.from({ length: periods }, (_item, index) =>
+    `<option value="${index + 1}">${index + 1}교시</option>`
+  ).join('');
+  periodSelect.value = String(previousPeriod);
+
+  const dayIndex = timetableDayIndex($('#changeDate').value);
+  const scheduledOriginal = dayIndex >= 0 ? targetClass?.timetable?.[dayIndex]?.[previousPeriod - 1] || '' : '';
+  if (!preserveOriginal) $('#changeOriginalSubject').value = scheduledOriginal;
+  const original = $('#changeOriginalSubject').value;
+  const changed = $('#changeNewSubject').value;
+  const preview = $('#changePreview');
+  preview.innerHTML = dayIndex < 0
+    ? '<span>토요일과 일요일은 정규 시간표 변경 대상으로 선택할 수 없습니다.</span>'
+    : `<strong>${escapeHtml(shortDate($('#changeDate').value))} ${previousPeriod}교시</strong><span>${escapeHtml(original || '수업 없음')} → ${escapeHtml(changed || '변경 과목 선택')}</span>`;
 }
 
 function schoolEditor() {
@@ -516,6 +569,8 @@ function calendarEditor() {
 }
 
 function broadcastEditor() {
+  const firstClass = state.classes[0];
+  const defaultPeriodCount = Number(firstClass?.periods) === 7 ? 7 : 6;
   return `
     <div class="broadcast-grid">
       <div class="item-editor">
@@ -526,15 +581,34 @@ function broadcastEditor() {
         <button class="primary-button" id="publishNoticeBtn">전체 PC에 공지 발행</button>
       </div>
       <div class="item-editor">
-        <h3>시간표 변경 발행</h3>
-        <label>대상 반<select id="changeClassId"><option value="">전체 반</option>${state.classes.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join('')}</select></label>
-        <label>적용 날짜<input id="changeDate" type="date" value="${todayKey()}" /></label>
-        <label>변경 내용<textarea id="changeBody" placeholder="예: 3교시 수학 → 체육"></textarea></label>
-        <button class="primary-button" id="publishChangeBtn">전체 PC에 변경 알림</button>
+        <h3>시간표 변경 설정</h3>
+        <div class="editor-row">
+          <label>대상 반<select id="changeClassId">${state.classes.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join('')}</select></label>
+          <label>변경 날짜<input id="changeDate" type="date" value="${todayKey()}" /></label>
+          <label>교시<select id="changePeriod">${Array.from({ length: defaultPeriodCount }, (_item, index) => `<option value="${index + 1}">${index + 1}교시</option>`).join('')}</select></label>
+          <label>기존 과목<select id="changeOriginalSubject">${subjectOptions(firstClass?.timetable?.[timetableDayIndex(todayKey())]?.[0] || '')}</select></label>
+          <label>변경 과목<select id="changeNewSubject">${subjectOptions('')}</select></label>
+        </div>
+        <div id="changePreview" class="change-preview"></div>
+        <button class="primary-button" id="publishChangeBtn">변경 저장 및 전체 PC 알림</button>
       </div>
     </div>
-    <p class="helper-text">발행하면 별도 설정 없이 같은 교내 네트워크의 School Portal에서 알림음과 팝업이 표시됩니다.</p>
-    <div id="publishResult" class="result-box"></div>`;
+    <p class="helper-text">변경을 저장하면 해당 날짜의 요일·교시 시간표에 변경 과목이 표시되고, 같은 교내 네트워크 PC에 알림이 발행됩니다.</p>
+    <div id="publishResult" class="result-box"></div>
+    <div class="item-editor">
+      <h3>등록된 시간표 변경</h3>
+      <div class="registered-changes">
+        ${state.timetableChanges.length ? [...state.timetableChanges]
+          .sort((a, b) => String(b.date || b.createdAt).localeCompare(String(a.date || a.createdAt)))
+          .map((item) => `
+            <div class="registered-change">
+              <span>${escapeHtml(state.classes.find((entry) => entry.id === item.classId)?.name || '전체 반')}</span>
+              <strong>${escapeHtml(changeDescription(item))}</strong>
+              <button class="danger-button compact-button" data-delete-change="${item.id}">삭제</button>
+            </div>
+          `).join('') : '<p class="empty">등록된 시간표 변경이 없습니다.</p>'}
+      </div>
+    </div>`;
 }
 
 function updateEditor() {
@@ -646,6 +720,9 @@ $('#adminContent').addEventListener('click', async (event) => {
   if (target.dataset.deleteSchedule) await saveConfig({ schedules: state.schedules.filter((item) => item.id !== target.dataset.deleteSchedule) });
   if (target.id === 'publishNoticeBtn') await publishNotice();
   if (target.id === 'publishChangeBtn') await publishChange();
+  if (target.dataset.deleteChange) {
+    await saveConfig({ timetableChanges: state.timetableChanges.filter((item) => item.id !== target.dataset.deleteChange) });
+  }
   if (target.id === 'checkAutoUpdateBtn') {
     $('#updateResult').textContent = '새 버전을 확인하는 중입니다...';
     const result = await api.checkAutoUpdate();
@@ -673,6 +750,15 @@ $('#adminContent').addEventListener('change', (event) => {
   editor.querySelectorAll('[data-period-seven]').forEach((cell) => {
     cell.classList.toggle('period-seven-hidden', !showSeventh);
   });
+});
+
+$('#adminContent').addEventListener('change', (event) => {
+  if (['changeClassId', 'changeDate', 'changePeriod'].includes(event.target.id)) {
+    syncChangeForm(false);
+  }
+  if (['changeOriginalSubject', 'changeNewSubject'].includes(event.target.id)) {
+    syncChangeForm(true);
+  }
 });
 
 async function saveSchool() {
@@ -762,19 +848,33 @@ async function publishNotice() {
 }
 
 async function publishChange() {
-  const body = $('#changeBody').value.trim();
-  if (!body) {
-    $('#publishResult').textContent = '시간표 변경 내용을 입력해 주세요.';
+  const classId = $('#changeClassId').value;
+  const date = $('#changeDate').value;
+  const period = Number($('#changePeriod').value);
+  const originalSubject = $('#changeOriginalSubject').value;
+  const changedSubject = $('#changeNewSubject').value;
+  if (!classId || !date || !period || !changedSubject) {
+    $('#publishResult').textContent = '대상 반, 날짜, 교시와 변경 과목을 모두 선택해 주세요.';
     return;
   }
-  const classId = $('#changeClassId').value;
-  const className = state.classes.find((item) => item.id === classId)?.name || '전체 반';
+  if (timetableDayIndex(date) < 0) {
+    $('#publishResult').textContent = '토요일과 일요일은 정규 시간표 변경 대상으로 선택할 수 없습니다.';
+    return;
+  }
+  if (originalSubject === changedSubject) {
+    $('#publishResult').textContent = '기존 과목과 다른 변경 과목을 선택해 주세요.';
+    return;
+  }
+  const className = state.classes.find((item) => item.id === classId)?.name || '선택한 반';
   const change = {
     id: uid('change'),
     title: `${className} 시간표 변경`,
-    body,
+    body: `${period}교시 ${originalSubject || '수업 없음'} → ${changedSubject}`,
     classId,
-    date: $('#changeDate').value || todayKey(),
+    date,
+    period,
+    originalSubject,
+    changedSubject,
     createdAt: new Date().toISOString(),
     kind: 'timetable'
   };

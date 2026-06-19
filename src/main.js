@@ -245,19 +245,37 @@ function createWindow() {
           app.quit();
           return;
         }
-        if (process.env.SCHOOL_PORTAL_CAPTURE_ADMIN === 'classes') {
+        if (process.env.SCHOOL_PORTAL_CAPTURE_ADMIN) {
           await mainWindow.webContents.executeJavaScript(`
-            adminTab = 'classes';
+            adminTab = ${JSON.stringify(process.env.SCHOOL_PORTAL_CAPTURE_ADMIN)};
             document.querySelectorAll('.admin-tabs button').forEach((tab) => tab.classList.toggle('active', tab.dataset.tab === adminTab));
             document.querySelector('#adminDialog').showModal();
             renderAdmin();
-            if (${JSON.stringify(process.env.SCHOOL_PORTAL_CAPTURE_PERIODS === '7')}) {
+            if (adminTab === 'classes' && ${JSON.stringify(process.env.SCHOOL_PORTAL_CAPTURE_PERIODS === '7')}) {
               const periods = document.querySelector('[data-class-editor] [data-field="periods"]');
               periods.value = '7';
               periods.dispatchEvent(new Event('change', { bubbles: true }));
             }
           `);
           await new Promise((resolve) => setTimeout(resolve, 350));
+        }
+        if (process.env.SCHOOL_PORTAL_CAPTURE_CHANGE === 'true') {
+          await mainWindow.webContents.executeJavaScript(`
+            const captureClass = selectedClass();
+            state.timetableChanges = [{
+              id: 'capture-change',
+              classId: captureClass.id,
+              date: '2026-06-19',
+              period: 2,
+              originalSubject: captureClass.timetable[4]?.[1] || '수학',
+              changedSubject: '음악',
+              body: '2교시 음악으로 변경',
+              createdAt: new Date().toISOString(),
+              kind: 'timetable'
+            }, ...state.timetableChanges];
+            render();
+          `);
+          await new Promise((resolve) => setTimeout(resolve, 200));
         }
         const image = await mainWindow.webContents.capturePage();
         fs.writeFileSync(process.env.SCHOOL_PORTAL_CAPTURE, image.toPNG());

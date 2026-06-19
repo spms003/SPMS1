@@ -59,6 +59,10 @@ button { cursor: pointer; }
 .section-title h1 { font-size: 24px; }
 .panel-title h2 { font-size: 18px; }
 .section-title > span, .panel-title > span { color: var(--muted); font-size: 12px; }
+.timetable-panel .panel-title { align-items: center; }
+.timetable-panel .panel-title .title-with-icon { min-width: 180px; flex: 1 1 auto; }
+.timetable-panel .panel-title h2 { white-space: nowrap; }
+#classSelect { width: 145px; min-width: 145px; flex: 0 0 145px; }
 .title-with-icon { display: flex; align-items: center; gap: 10px; }
 .menu-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 9px; color: #fff; font-size: 18px; font-weight: 800; box-shadow: 0 5px 12px rgba(0,0,0,.12); }
 .apps-icon { background: #0a84ff; }
@@ -122,7 +126,7 @@ button { cursor: pointer; }
 .table-head, .table-corner { color: var(--muted); background: rgba(118,118,128,.09); font-weight: 700; }
 .period { color: var(--accent); background: color-mix(in srgb,var(--accent) 5%,white); font-weight: 700; }
 .subject { display: flex !important; flex-direction: row; align-items: center; justify-content: center; gap: 6px; background: rgba(255,255,255,.54); text-align: left; }
-.subject > span:last-child { min-width: 0; max-width: calc(100% - 28px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.subject > span:not(.subject-icon) { min-width: 0; max-width: calc(100% - 28px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .subject-icon { display: inline-grid; place-items: center; width: 22px; height: 22px; flex: 0 0 auto; border-radius: 6px; background: color-mix(in srgb, var(--accent) 9%, white); color: var(--accent); font-size: 7px; font-weight: 800; letter-spacing: 0; }
 .subject-icon-calculator, .subject-icon-languages, .subject-icon-computer { font-size: 8px; }
 .subject-icon-calculator { color: #ff453a; background: #fff0ef; }
@@ -133,9 +137,11 @@ button { cursor: pointer; }
 .subject-icon-music { color: #bf5af2; background: #f9efff; }
 .subject-icon-palette { color: #ff375f; background: #fff0f4; }
 .subject-icon-shield { color: #30a14e; background: #edf9f0; }
+.changed-subject { position: relative; padding-right: 34px !important; background: #fff8e8; box-shadow: inset 0 0 0 1px rgba(255,159,10,.28); }
+.changed-subject .change-date { position: absolute; top: 3px; right: 3px; padding: 2px 4px; border-radius: 4px; background: #ff9f0a; color: #fff; font-size: 7px; font-weight: 800; line-height: 1.2; white-space: nowrap; }
 .change-list { display: grid; gap: 6px; margin-top: 12px; }
 .change-list h3 { margin: 0; font-size: 12px; }
-.change-list div { display: grid; grid-template-columns: 82px 1fr; gap: 8px; padding: 7px 9px; border-radius: 7px; background: #fff2f0; font-size: 11px; }
+.change-list div { display: grid; grid-template-columns: 42px 1fr; gap: 8px; padding: 7px 9px; border-radius: 7px; background: #fff8e8; font-size: 11px; }
 .change-list b { color: var(--danger); }
 
 .calendar-controls { display: flex; gap: 5px; }
@@ -202,6 +208,12 @@ button { cursor: pointer; }
 .actions { display:flex; flex-wrap:wrap; gap:7px; }
 .helper-text, .result-box, .update-channel-copy { margin:0; color:var(--muted); font-size:11px; line-height:1.6; }
 .result-box { min-height:18px; }
+.change-preview { display:flex; align-items:center; gap:10px; min-height:40px; padding:9px 11px; border-radius:8px; background:#fff8e8; color:var(--muted); font-size:11px; }
+.change-preview strong { color:#b85d00; }
+.registered-changes { display:grid; gap:7px; }
+.registered-change { display:grid; grid-template-columns:90px minmax(0,1fr) auto; align-items:center; gap:9px; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:11px; }
+.registered-change > span { color:var(--accent); font-weight:700; }
+.registered-change strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .list-editor { display:grid; grid-template-columns:96px 1fr auto; align-items:center; gap:9px; padding:9px 11px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:11px; }
 .check-label { display:flex !important; align-items:center; flex-direction:row; }
 .check-label input { width:17px; min-height:17px; }
